@@ -982,17 +982,26 @@ static void exec(char *cmdline)
                { 
                  // read length of the recorded frame first from the buffer
                  len = bigrecordingbuffer[bigrecordingbufferpos];
-                 if ( ((len<=60) and (len>0)) and ((i == setting) or (setting == 0))  )
-                 { 
-                    // take next frame from the buffer  for replay
-                    memcpy(ccsendingbuffer, &bigrecordingbuffer[bigrecordingbufferpos + 1], len );      
-                    // send these data to radio over CC1101
-                    ELECHOUSE_cc1101.SendData(ccsendingbuffer, (byte)len);
-                 };
-                  // increase position to the buffer and check exception
-                  bigrecordingbufferpos = bigrecordingbufferpos + 1 + len;
-                  if ( bigrecordingbufferpos > RECORDINGBUFFERSIZE) break;
-                 // 
+                 // Check if length is valid first
+                 if ((len <= 60) && (len > 0))
+                 {
+                     // If len is valid, check if this is the frame to play
+                     if ((i == setting) || (setting == 0)) {
+                         // take next frame from the buffer for replay
+                         memcpy(ccsendingbuffer, &bigrecordingbuffer[bigrecordingbufferpos + 1], len );
+                         // send these data to radio over CC1101
+                         ELECHOUSE_cc1101.SendData(ccsendingbuffer, (byte)len);
+                     }
+
+                     // FIX: Advance the buffer position only for valid frames
+                     bigrecordingbufferpos = bigrecordingbufferpos + 1 + len;
+                     if ( bigrecordingbufferpos > RECORDINGBUFFERSIZE) break;
+
+                 } else {
+                    // If len is invalid, stop processing to avoid a crash
+                    Serial.println(F("\r\nInvalid frame length found in buffer. Stopping."));
+                    break;
+                 }
                };
              }; // end of IF framesinrecordingbuffer  
         
@@ -1058,14 +1067,18 @@ static void exec(char *cmdline)
                     asciitohex(&bigrecordingbuffer[bigrecordingbufferpos + 1], textbuffer,  len);
                     Serial.print(F("\r\nFrame "));
                     Serial.print(setting);
-                    Serial.print(F(" : "));                     
+                    Serial.print(F(" : "));
                     Serial.print((char *)textbuffer);
                     Serial.print(F("\r\n"));
-                 };
-                    // increase position to the buffer and check exception
+
+                    // FIX: Advance the buffer position only for valid frames
                     bigrecordingbufferpos = bigrecordingbufferpos + 1 + len;
                     if ( bigrecordingbufferpos > RECORDINGBUFFERSIZE) break;
-                 // 
+                 } else {
+                    // If len is invalid, stop processing to avoid a crash
+                    Serial.println(F("\r\nInvalid frame length found in buffer. Stopping."));
+                    break;
+                 }
                };
           // rewind buffer position
           // bigrecordingbufferpos = 0;
